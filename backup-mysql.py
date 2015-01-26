@@ -43,19 +43,15 @@ except ImportError:
 # - - - - - - - - - - CONFIGURATION OPTIONS! - - - - - - - - - - #
 
 # MySQL login info:
-#MYSQL_DUMP_PATH = '/usr/bin/mysqldump'
-MYSQL_DUMP_PATH = '/xampp/mysql/bin/mysqldump'
+MYSQL_DUMP_PATH = '/usr/bin/mysqldump'
 MYSQL_ROOT_USER = 'root'
-#MYSQL_ROOT_PASS = 'my-root-passsword'
-MYSQL_ROOT_PASS = ''
+MYSQL_ROOT_PASS = 'my-root-passsword'
 MYSQL_HOSTNAME  = 'localhost'
 MYSQL_PORT      = 3306
 
 # Dropbox (see documentation on how to do this):
-#DROPBOX_KEY     = 'dropbox-app-key'      # Dropbox API Key
-DROPBOX_KEY     = 'h5w8nv0u0172xbs'
-#DROPBOX_SECRET  = 'dropbox-app-secret'   # Dropbox API Secret
-DROPBOX_SECRET  = '9b6z9t8fzrl3ezt'
+DROPBOX_KEY     = 'dropbox-app-key'      # Dropbox API Key
+DROPBOX_SECRET  = 'dropbox-app-secret'   # Dropbox API Secret
 DROPBOX_ACCESS  = 'dropbox'              # Can be 'app_folder' or 'dropbox'
 DROPBOX_FOLDER  = '/backups/mysql/'      # Folder to use in Dropbox - with trailing slash
 
