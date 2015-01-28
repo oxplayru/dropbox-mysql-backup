@@ -43,6 +43,7 @@ except ImportError:
 # - - - - - - - - - - CONFIGURATION OPTIONS! - - - - - - - - - - #
 
 # MySQL login info:
+MYSQL_DUMP_PATH = '/usr/bin/mysqldump'
 MYSQL_ROOT_USER = 'root'
 MYSQL_ROOT_PASS = 'my-root-passsword'
 MYSQL_HOSTNAME  = 'localhost'
@@ -61,7 +62,7 @@ OPTION_USE_HOST  = True                  # Prepend the system hostname to the ou
 # - - - - - - - - - - END OF CONFIG OPTIONS! - - - - - - - - - - #
 
 # Dropbox token file - stores our oauth info for re-use:
-DROPBOX_TOKEN_FILE = 'dropbox.tokens.txt'
+DROPBOX_TOKEN_FILE = 'dropbox.token'
 
 # Directory to work in (include trailing slash)
 # Will be created if it doesn't exist.
@@ -70,27 +71,23 @@ TMP_DIR = os.getcwd() + '/tmp/'
 
 def get_timestamp():
     """Returns a MySQL-style timestamp from the current time"""
-    return time.strftime("%Y-%m-%d %T")
-
+    return time.strftime("%Y-%m-%d %H:%M:%S")
 
 def do_mysql_backup(tmp_file):
     """Backs up the MySQL server (all DBs) to the specified file"""
-    os.system("/usr/bin/mysqldump -u %s -p\"%s\" -h %s -P %d --opt --all-databases > %s" % (MYSQL_ROOT_USER, MYSQL_ROOT_PASS, MYSQL_HOSTNAME, MYSQL_PORT, TMP_DIR + tmp_file))
+    os.system("%s -u %s -p\"%s\" -h %s -P %d --opt --all-databases > %s" % (MYSQL_DUMP_PATH, MYSQL_ROOT_USER, MYSQL_ROOT_PASS, MYSQL_HOSTNAME, MYSQL_PORT, TMP_DIR + tmp_file))
 
 def connect_to_dropbox():
     """Authorizes the app with Dropbox. Returns False if we can't connect"""
 
     # No I will not care about scope.
-    global dropbox_session
     global dropbox_client
     global dropbox_info
 
-    token_key = ''
-
-    dropbox_session = session.DropboxSession(DROPBOX_KEY, DROPBOX_SECRET, DROPBOX_ACCESS)
+    access_token = ''
 
     # Do we have access tokens?
-    while len(token_key) == 0:
+    while len(access_token) == 0:
         try:
             token_file = open(DROPBOX_TOKEN_FILE, 'r')
         except IOError:
@@ -98,12 +95,11 @@ def connect_to_dropbox():
             get_new_dropbox_tokens()
             token_file = open(DROPBOX_TOKEN_FILE, 'r')
         
-        token_key, token_secret = token_file.read().split('|')
+        access_token = token_file.read()        
         token_file.close()
 
     # Hopefully now we have token_key and token_secret...
-    dropbox_session.set_token(token_key, token_secret)
-    dropbox_client = client.DropboxClient(dropbox_session)
+    dropbox_client = client.DropboxClient(access_token)
 
     # Double-check that we've logged in
     try:
@@ -112,24 +108,26 @@ def connect_to_dropbox():
         # If we're at this point, someone probably deleted this app in their DB 
         # account, but didn't delete the tokens file. Clear everything and try again.
         os.unlink(DROPBOX_TOKEN_FILE)
-        token_key = ''
+        access_token = ''
         connect_to_dropbox()    # Who doesn't love a little recursion?
 
 
 def get_new_dropbox_tokens():
     """Helps the user auth this app with Dropbox, and stores the tokens in a file"""
 
-    request_token   = dropbox_session.obtain_request_token()
+    flow = client.DropboxOAuth2FlowNoRedirect(DROPBOX_KEY, DROPBOX_SECRET)
+    authorize_url = flow.start()
 
     print "Looks like you haven't allowed this app to access your Dropbox account yet!"
-    print "Please visit: " + dropbox_session.build_authorize_url(request_token)
-    print "and press the 'allow' button, and then press Enter here."
-    raw_input()
+    print "1. Visit " + authorize_url
+    print "2. Click \"Allow\" (you might have to log in first)"
+    print "3. Copy the authorization code"
 
-    access_token = dropbox_session.obtain_access_token(request_token)
-
+    code = raw_input("Enter authorization code here: ").strip()
+    access_token, user_id = flow.finish(code)
+    
     token_file = open(DROPBOX_TOKEN_FILE, 'w')
-    token_file.write("%s|%s" % (access_token.key, access_token.secret))
+    token_file.write(access_token)
     token_file.close()
 
 
@@ -178,15 +176,25 @@ def main():
         # Tell the user how big the compressed file is:
         print "File compressed. New filesize: " + size(os.path.getsize(TMP_DIR + MYSQL_TMP_FILE))
 
+    
+    tmp_size = os.path.getsize(TMP_DIR + MYSQL_TMP_FILE)
+    tmp_file = open(TMP_DIR + MYSQL_TMP_FILE, 'rb')
 
     print "Uploading backup to Dropbox..."
-    tmp_file = open(TMP_DIR + MYSQL_TMP_FILE)
+    uploader = dropbox_client.get_chunked_uploader(tmp_file, tmp_size)
 
-    result = dropbox_client.put_file(DROPBOX_FOLDER + MYSQL_TMP_FILE, tmp_file)
-    # TODO: Check for dropbox.rest.ErrorResponse
+    while uploader.offset < tmp_size:
+        try:
+            upload = uploader.upload_chunked(1024 * 1024)
+        except rest.ErrorResponse, e:
+            print "Error: %d %s" % (e.errno, e.strerror)
+            pass
 
-    print "File uploaded as '" + result['path'] + "', size: " + result['size']
+    uploader.finish(DROPBOX_FOLDER + MYSQL_TMP_FILE)
+    tmp_file.close()
 
+    print "File Uploaded as \"%s\" size: %d bytes" % (DROPBOX_FOLDER + MYSQL_TMP_FILE, tmp_size)
+    
     print "Cleaning up..."
     os.unlink(TMP_DIR + MYSQL_TMP_FILE)
 
