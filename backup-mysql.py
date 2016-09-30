@@ -26,6 +26,7 @@ import re
 import socket
 import sys
 import time
+import subprocess
 
 try:
     from dropbox import client, rest, session
@@ -75,7 +76,7 @@ def get_timestamp():
 
 def do_mysql_backup(tmp_file):
     """Backs up the MySQL server (all DBs) to the specified file"""
-    os.system("%s -u %s -p\"%s\" -h %s -P %d --opt --all-databases > %s" % (MYSQL_DUMP_PATH, MYSQL_ROOT_USER, MYSQL_ROOT_PASS, MYSQL_HOSTNAME, MYSQL_PORT, TMP_DIR + tmp_file))
+    return subprocess.call("%s -u %s -p\"%s\" -h %s -P %d --opt --all-databases > %s" % (MYSQL_DUMP_PATH, MYSQL_ROOT_USER, MYSQL_ROOT_PASS, MYSQL_HOSTNAME, MYSQL_PORT, TMP_DIR + tmp_file), shell=True)
 
 def connect_to_dropbox():
     """Authorizes the app with Dropbox. Returns False if we can't connect"""
@@ -148,7 +149,11 @@ def main():
     print "Connected to Dropbox as " + dropbox_info['display_name']
 
     print "Creating MySQL backup, please wait..."
-    do_mysql_backup(MYSQL_TMP_FILE)
+    
+    returned_code = do_mysql_backup(MYSQL_TMP_FILE)
+    if not returned_code == 0:
+        print("Mysqldump raised an error")
+        sys.exit(1)
 
     print "Backup done. File is " + size(os.path.getsize(TMP_DIR + MYSQL_TMP_FILE))
 
