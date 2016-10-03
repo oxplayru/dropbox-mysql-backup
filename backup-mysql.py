@@ -44,21 +44,21 @@ except ImportError:
 # - - - - - - - - - - CONFIGURATION OPTIONS! - - - - - - - - - - #
 
 # MySQL login info:
-MYSQL_DUMP_PATH = '/usr/bin/mysqldump'
-MYSQL_ROOT_USER = 'root'
-MYSQL_ROOT_PASS = 'my-root-passsword'
-MYSQL_HOSTNAME  = 'localhost'
-MYSQL_PORT      = 3306
+MYSQL_DUMP_PATH = os.getenv('MYSQL_DUMP_PATH', '/usr/bin/mysqldump')
+MYSQL_ROOT_USER = os.getenv('MYSQL_ROOT_USER', 'root')
+MYSQL_ROOT_PASS = os.getenv('MYSQL_ROOT_PASS', 'my-root-passsword')
+MYSQL_HOSTNAME  = os.getenv('MYSQL_HOSTNAME', 'localhost')
+MYSQL_PORT      = os.getenv('MYSQL_PORT', 3306)
 
 # Dropbox (see documentation on how to do this):
-DROPBOX_KEY     = 'dropbox-app-key'      # Dropbox API Key
-DROPBOX_SECRET  = 'dropbox-app-secret'   # Dropbox API Secret
-DROPBOX_ACCESS  = 'dropbox'              # Can be 'app_folder' or 'dropbox'
-DROPBOX_FOLDER  = '/backups/mysql/'      # Folder to use in Dropbox - with trailing slash
+DROPBOX_KEY     = os.getenv('DROPBOX_KEY',    'dropbox-app-key')      # Dropbox API Key
+DROPBOX_SECRET  = os.getenv('DROPBOX_SECRET', 'dropbox-app-secret')   # Dropbox API Secret
+DROPBOX_ACCESS  = os.getenv('DROPBOX_ACCESS', 'dropbox')              # Can be 'app_folder' or 'dropbox'
+DROPBOX_FOLDER  = os.getenv('DROPBOX_FOLDER', '/backups/mysql/')      # Folder to use in Dropbox - with trailing slash
 
 # Other Options:
-OPTION_GZIP      = True                  # gzip the resulting SQL file before uploading?
-OPTION_USE_HOST  = True                  # Prepend the system hostname to the output filename?
+OPTION_GZIP      = os.getenv('OPTION_GZIP',     True)                 # gzip the resulting SQL file before uploading?
+OPTION_USE_HOST  = os.getenv('OPTION_USE_HOST', True)                 # Prepend the system hostname to the output filename?
 
 # - - - - - - - - - - END OF CONFIG OPTIONS! - - - - - - - - - - #
 
