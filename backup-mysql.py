@@ -53,6 +53,7 @@ MYSQL_PORT      = os.getenv('MYSQL_PORT', 3306)
 # Dropbox (see documentation on how to do this):
 DROPBOX_KEY     = os.getenv('DROPBOX_KEY',    'dropbox-app-key')      # Dropbox API Key
 DROPBOX_SECRET  = os.getenv('DROPBOX_SECRET', 'dropbox-app-secret')   # Dropbox API Secret
+DROPBOX_TOKEN   = os.getenv('DROPBOX_TOKEN')                          # Dropbox API Token
 DROPBOX_ACCESS  = os.getenv('DROPBOX_ACCESS', 'dropbox')              # Can be 'app_folder' or 'dropbox'
 DROPBOX_FOLDER  = os.getenv('DROPBOX_FOLDER', '/backups/mysql/')      # Folder to use in Dropbox - with trailing slash
 
@@ -86,31 +87,38 @@ def connect_to_dropbox():
     global dropbox_info
 
     access_token = ''
-
-    # Do we have access tokens?
-    while len(access_token) == 0:
-        try:
-            token_file = open(DROPBOX_TOKEN_FILE, 'r')
-        except IOError:
-            # Re-build the file and try again, maybe?
-            get_new_dropbox_tokens()
-            token_file = open(DROPBOX_TOKEN_FILE, 'r')
-        
-        access_token = token_file.read()        
-        token_file.close()
+    
+    if not DROPBOX_TOKEN:
+        # Do we have access tokens?
+        while len(access_token) == 0:
+            try:
+                token_file = open(DROPBOX_TOKEN_FILE, 'r')
+            except IOError:
+                # Re-build the file and try again, maybe?
+                get_new_dropbox_tokens()
+                token_file = open(DROPBOX_TOKEN_FILE, 'r')
+            
+            access_token = token_file.read()        
+            token_file.close()
+    else:
+        access_token = DROPBOX_TOKEN
 
     # Hopefully now we have token_key and token_secret...
     dropbox_client = client.DropboxClient(access_token)
-
+    
     # Double-check that we've logged in
     try:
         dropbox_info = dropbox_client.account_info()
     except:
         # If we're at this point, someone probably deleted this app in their DB 
         # account, but didn't delete the tokens file. Clear everything and try again.
-        os.unlink(DROPBOX_TOKEN_FILE)
-        access_token = ''
-        connect_to_dropbox()    # Who doesn't love a little recursion?
+        if not DROPBOX_TOKEN:
+            os.unlink(DROPBOX_TOKEN_FILE)
+            access_token = ''
+            connect_to_dropbox()    # Who doesn't love a little recursion?
+        else:
+            print("Wrong token set in DROPBOX_TOKEN variable")
+            sys.exit(1)
 
 
 def get_new_dropbox_tokens():
